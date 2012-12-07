@@ -1,0 +1,163 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <EnvInjectJobProperty>
+      <info>
+        <loadFilesFromMaster>false</loadFilesFromMaster>
+      </info>
+      <on>true</on>
+      <keepJenkinsSystemVariables>true</keepJenkinsSystemVariables>
+      <keepBuildVariables>true</keepBuildVariables>
+      <contributors/>
+    </EnvInjectJobProperty>
+  </properties>
+  <scm class="hudson.plugins.git.GitSCM">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <name></name>
+        <refspec></refspec>
+        <url>{{gitrepo}}</url>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>master</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+    <disableSubmodules>false</disableSubmodules>
+    <recursiveSubmodules>false</recursiveSubmodules>
+    <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+    <authorOrCommitter>false</authorOrCommitter>
+    <clean>false</clean>
+    <wipeOutWorkspace>false</wipeOutWorkspace>
+    <pruneBranches>false</pruneBranches>
+    <remotePoll>false</remotePoll>
+    <ignoreNotifyCommit>false</ignoreNotifyCommit>
+    <useShallowClone>false</useShallowClone>
+    <buildChooser class="hudson.plugins.git.util.DefaultBuildChooser"/>
+    <gitTool>Default</gitTool>
+    <submoduleCfg class="list"/>
+    <relativeTargetDir></relativeTargetDir>
+    <reference></reference>
+    <excludedRegions></excludedRegions>
+    <excludedUsers></excludedUsers>
+    <gitConfigName>Jon Nolen</gitConfigName>
+    <gitConfigEmail>jnolen@developertown.com</gitConfigEmail>
+    <skipTag>false</skipTag>
+    <includedRegions></includedRegions>
+    <scmName></scmName>
+  </scm>
+  <assignedNode>ios-ci</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers class="vector">
+    <hudson.triggers.SCMTrigger>
+      <spec>* * * * *</spec>
+    </hudson.triggers.SCMTrigger>
+  </triggers>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+#create a prop file so that we can embed the provisioning profile into the ipa.
+echo _PROVISIONING_PROFILE=`ls *.mobileprovision` &gt; propsfile</command>
+    </hudson.tasks.Shell>
+    <EnvInjectBuilder>
+      <info>
+        <propertiesFilePath>propsfile</propertiesFilePath>
+      </info>
+    </EnvInjectBuilder>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+#copy the mobile provisioning profile:
+cp *.mobileprovision  $HOME/Library/MobileDevice/Provisioning\ Profiles/</command>
+    </hudson.tasks.Shell>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+#cleaning up build directorys.
+
+rm -rf build.*
+rm -rf test.*
+</command>
+    </hudson.tasks.Shell>
+    <au.com.rayh.XCodeBuilder>
+      <cleanBeforeBuild>true</cleanBeforeBuild>
+      <cleanTestReports>true</cleanTestReports>
+      <configuration></configuration>
+      <target></target>
+      <sdk>iphonesimulator</sdk>
+      <symRoot>$WORKSPACE/test.sym</symRoot>
+      <configurationBuildDir></configurationBuildDir>
+      <xcodeProjectPath></xcodeProjectPath>
+      <xcodeProjectFile></xcodeProjectFile>
+      <xcodebuildArguments>DSTROOT=$WORKSPACE/test.dst OBJROOT=$WORKSPACE/test.obj SHARED_PRECOMPS_DIR=$WORKSPACE/test.pch</xcodebuildArguments>
+      <xcodeSchema>Test</xcodeSchema>
+      <xcodeWorkspaceFile>PassagewaysBoard</xcodeWorkspaceFile>
+      <embeddedProfileFile></embeddedProfileFile>
+      <cfBundleVersionValue></cfBundleVersionValue>
+      <cfBundleShortVersionStringValue></cfBundleShortVersionStringValue>
+      <buildIpa>false</buildIpa>
+      <unlockKeychain>false</unlockKeychain>
+      <keychainPath>${HOME}/Library/Keychains/login.keychain</keychainPath>
+      <keychainPwd></keychainPwd>
+    </au.com.rayh.XCodeBuilder>
+    <au.com.rayh.XCodeBuilder>
+      <cleanBeforeBuild>true</cleanBeforeBuild>
+      <cleanTestReports>false</cleanTestReports>
+      <configuration>Release</configuration>
+      <target></target>
+      <sdk>iphoneos</sdk>
+      <symRoot>$WORKSPACE/build.sym</symRoot>
+      <configurationBuildDir></configurationBuildDir>
+      <xcodeProjectPath></xcodeProjectPath>
+      <xcodeProjectFile></xcodeProjectFile>
+      <xcodebuildArguments>DSTROOT=$WORKSPACE/build.dst OBJROOT=$WORKSPACE/build.obj SHARED_PRECOMPS_DIR=$WORKSPACE/build.pch</xcodebuildArguments>
+      <xcodeSchema>PassagewaysBoard</xcodeSchema>
+      <xcodeWorkspaceFile>PassagewaysBoard</xcodeWorkspaceFile>
+      <embeddedProfileFile>$_PROVISIONING_PROFILE</embeddedProfileFile>
+      <cfBundleVersionValue>${BUILD_NUMBER}</cfBundleVersionValue>
+      <cfBundleShortVersionStringValue>1.0</cfBundleShortVersionStringValue>
+      <buildIpa>true</buildIpa>
+      <unlockKeychain>true</unlockKeychain>
+      <keychainPath>${HOME}/Library/Keychains/jenkins</keychainPath>
+      <keychainPwd>jenkins</keychainPwd>
+    </au.com.rayh.XCodeBuilder>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+TESTFLIGHT_IPA=`ls ${WORKSPACE}/build.sym/Release-iphoneos/*.ipa`
+
+echo $TESTFLIGHT_IPA
+curl http://testflightapp.com/api/builds.json -F file=@&quot;${TESTFLIGHT_IPA}&quot; -F api_token=&quot;$TESTFLIGHT_API_TOKEN&quot; -F team_token=&quot;$TESTFLIGHT_TEAM_TOKEN&quot; -F notes=&quot;CI build #${BUILD_NUMBER}(${BUILD_URL})&quot;</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.tasks.ArtifactArchiver>
+      <artifacts>build.sym/Release-iphoneos/*.ipa,build.sym/Release-iphoneos/*dSYM.zip</artifacts>
+      <latestOnly>false</latestOnly>
+    </hudson.tasks.ArtifactArchiver>
+    <hudson.tasks.junit.JUnitResultArchiver>
+      <testResults>test-reports/*.xml</testResults>
+      <keepLongStdio>false</keepLongStdio>
+      <testDataPublishers/>
+    </hudson.tasks.junit.JUnitResultArchiver>
+  </publishers>
+  <buildWrappers>
+    <EnvInjectBuildWrapper>
+      <info>
+        <propertiesContent>TESTFLIGHT_API_TOKEN={{TESTFLIGHT_API_TOKEN}}
+TESTFLIGHT_TEAM_TOKEN={{TESTFLIGHT_TEAM_TOKEN}}
+</propertiesContent>
+        <loadFilesFromMaster>false</loadFilesFromMaster>
+      </info>
+    </EnvInjectBuildWrapper>
+  </buildWrappers>
+</project>
